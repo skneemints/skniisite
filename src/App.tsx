@@ -5,11 +5,12 @@ import { Window } from './components/Window';
 import { Taskbar } from './components/Taskbar';
 import { ThemeWindow, SettingsWindow } from './components/ThemeSettings';
 import { Starfield } from './components/Starfield';
-import { Palette, Settings, Cpu } from 'lucide-react';
+import { WelcomeWindow } from './components/WelcomeWindow';
+import { Palette, Settings, Cpu, Monitor } from 'lucide-react';
 
 const Desktop = () => {
   const { theme } = useTheme();
-  const [openWindows, setOpenWindows] = useState<string[]>([]);
+  const [openWindows, setOpenWindows] = useState<string[]>(['welcome']);
 
   const toggleWindow = (id: string) => {
     console.log('Toggling window:', id);
@@ -61,6 +62,17 @@ const Desktop = () => {
 
         {/* Windows Container */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+          {openWindows.includes('welcome') && (
+            <Window 
+              title="SYS_BOOT.EXE" 
+              icon={Monitor} 
+              onClose={() => toggleWindow('welcome')}
+              defaultPosition={{ x: 0, y: 0 }}
+            >
+              <WelcomeWindow />
+            </Window>
+          )}
+
           {openWindows.includes('theme') && (
             <Window 
               title="Theme Settings" 

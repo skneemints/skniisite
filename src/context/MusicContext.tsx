@@ -8,19 +8,49 @@ type Track = {
 };
 
 const tracks: Track[] = [
-  { 
-    id: 1, 
-    title: 'SWEET_MARIO_LOVE.MP3', 
-    url: '/audio/Sweet Mario Love/Sweet Mario Love[SPC700].mp3',
-    artwork: '/audio/Sweet Mario Love/Sweet Mario Love[SPC700].png'
+  {
+    id: 3,
+    title: 'SLIG_BARRACKS.MP3',
+    url: "/audio/Oddworld： Abe's Exoddus OST 'Slig Barracks'/Oddworld： Abe's Exoddus OST 'Slig Barracks'.mp3",
+    artwork: "/audio/Oddworld： Abe's Exoddus OST 'Slig Barracks'/Oddworld： Abe's Exoddus OST 'Slig Barracks'.png"
   },
   {
     id: 2,
     title: 'KINGS_FIELD_TOWER.MP3',
     url: "/audio/King's Field The Ancient City OST - The Ancient City Level 3, Tower (Extended)/King's Field The Ancient City OST - The Ancient City Level 3, Tower (Extended).mp3",
     artwork: "/audio/King's Field The Ancient City OST - The Ancient City Level 3, Tower (Extended)/King's Field The Ancient City OST - The Ancient City Level 3, Tower (Extended).png"
+  },
+  { 
+    id: 4, 
+    title: 'SWEET_MARIO_LOVE.MP3', 
+    url: '/audio/Sweet Mario Love/Sweet Mario Love[SPC700].mp3',
+    artwork: '/audio/Sweet Mario Love/Sweet Mario Love[SPC700].png'
+  },
+  {
+    id: 5,
+    title: 'WAR_ROOM.MP3',
+    url: "/audio/Oddworld： Abe's Exoddus OST 'War Room'/Oddworld： Abe's Exoddus OST 'War Room'.mp3",
+    artwork: "/audio/Oddworld： Abe's Exoddus OST 'War Room'/Oddworld： Abe's Exoddus OST 'War Room'.png"
+  },
+  {
+    id: 2,
+    title: 'FEEL_GOOD_INC_64.MP3',
+    url: "/audio/Feel Good Inc. done through the mario 64 soundfont/Feel Good Inc. done through the mario 64 soundfont.mp3",
+    artwork: "/audio/Feel Good Inc. done through the mario 64 soundfont/Feel Good Inc. done through the mario 64 soundfont.png"
+  },
+  {
+    id: 1,
+    title: 'MACROBLANK_SORCERY.MP3',
+    url: "/audio/Macroblank/System Residue/Macroblank - system residue - 02 sorcery.mp3",
+    artwork: "/audio/Macroblank/System Residue/cover.png"
+  },
+  {
+    id: 7,
+    title: 'SCHALAS_THEME.MP3',
+    url: "/audio/Yasunori Mitsuda - Schala's Theme [Chrono Trigger]/Yasunori Mitsuda - Schala's Theme [Chrono Trigger].mp3",
+    artwork: "/audio/Yasunori Mitsuda - Schala's Theme [Chrono Trigger]/Yasunori Mitsuda - Schala's Theme [Chrono Trigger].png"
   }
-];
+].sort((a, b) => a.id - b.id);
 
 type MusicContextType = {
   isPlaying: boolean;
@@ -40,7 +70,7 @@ const MusicContext = createContext<MusicContextType | undefined>(undefined);
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [trackIndex, setTrackIndex] = useState(0);
-  const [volume, setVolume] = useState(0.5);
+  const [volume, setVolume] = useState(0.1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
