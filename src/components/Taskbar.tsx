@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Palette, Settings, Music, List } from 'lucide-react';
+import { Palette, Settings, Music, List, ExternalLink } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useMusic } from '../context/MusicContext';
 import { MusicPlayer } from './MusicPlayer';
@@ -117,6 +117,12 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, min
                 className="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center gap-2 font-bold text-xs"
               >
                 <Palette className="w-4 h-4" /> THEME_COLORS
+              </button>
+              <button
+                onClick={() => { onOpenWindow('shortcuts'); setShowStart(false); }}
+                className="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center gap-2 font-bold text-xs"
+              >
+                <ExternalLink className="w-4 h-4" /> SHORTCUTS
               </button>
               <button
                 onClick={() => { onOpenWindow('settings'); setShowStart(false); }}

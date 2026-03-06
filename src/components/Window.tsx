@@ -17,6 +17,7 @@ interface WindowProps {
   zIndex?: number;
   defaultPosition?: { x: number, y: number };
   flush?: boolean;
+  transparent?: boolean;
   className?: string;
 }
 
@@ -36,7 +37,7 @@ const HANDLES: { dir: string; cursor: string; style: React.CSSProperties }[] = [
 
 export const Window: React.FC<WindowProps> = ({
   title, icon: Icon, children, onClose, onMinimize, onMaximize, onFocus,
-  isMaximized, isMinimized, isActive, zIndex = 50, defaultPosition, flush = false, className = "max-w-md"
+  isMaximized, isMinimized, isActive, zIndex = 50, defaultPosition, flush = false, transparent = false, className = "max-w-md"
 }) => {
   const { theme } = useTheme();
   const isTop = theme.taskbarPosition === 'top';
@@ -169,7 +170,7 @@ export const Window: React.FC<WindowProps> = ({
         opacity: { duration: 0.08 },
       }}
       onMouseDown={onFocus}
-      className={`win95-outset surface-grit overflow-hidden flex flex-col pointer-events-auto transition-shadow duration-300 ${isMaximized ? 'fixed' : 'relative ' + className} ${isMinimized ? 'invisible h-0 w-0' : ''}`}
+      className={`win95-outset ${transparent ? '' : 'surface-grit'} overflow-hidden flex flex-col pointer-events-auto transition-shadow duration-300 ${isMaximized ? 'fixed' : 'relative ' + className} ${isMinimized ? 'invisible h-0 w-0' : ''}`}
       style={{
         // When maximized, pass 0 to cancel any drag-offset transform.
         // When not maximized, the motion value follows drag and resize.
@@ -177,6 +178,7 @@ export const Window: React.FC<WindowProps> = ({
         y: isMaximized ? 0 : dragY,
         minWidth: isMaximized ? 0 : (isMinimized ? 0 : MIN_W),
         display: isMinimized ? 'none' : 'flex',
+        backgroundColor: transparent ? 'transparent' : 'var(--color-win-bg)',
         ...maximizedStyles
       }}
     >
@@ -235,7 +237,8 @@ export const Window: React.FC<WindowProps> = ({
         }}
       >
         <div
-          className={`${flush ? 'win95-inset' : 'p-4 win95-inset m-1'} text-sm font-mono text-gray-300 bg-black/40 backdrop-blur-sm relative z-10 overflow-hidden flex flex-col flex-1 min-h-0`}
+          className={`${flush ? (transparent ? '' : 'win95-inset') : ('p-4 m-1 ' + (transparent ? '' : 'win95-inset'))} text-sm font-mono text-gray-300 ${transparent ? '' : 'bg-black/40 backdrop-blur-sm'} relative z-10 overflow-hidden flex flex-col flex-1 min-h-0`}
+          style={transparent ? { backgroundColor: 'transparent', backgroundImage: 'none', border: 'none', boxShadow: 'none' } : {}}
         >
           {children}
         </div>
