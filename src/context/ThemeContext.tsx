@@ -31,6 +31,15 @@ const defaultTheme: Theme = {
   starSpeed: 0.1,
 };
 
+// Returns a darkened version of a hex color (factor < 1 = darker)
+const darken = (hex: string, factor: number): string => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const d = (n: number) => Math.round(n * factor).toString(16).padStart(2, '0');
+  return `#${d(r)}${d(g)}${d(b)}`;
+};
+
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -79,6 +88,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           '--color-secondary': theme.secondary,
           '--color-accent': theme.accent,
           '--color-win-bg': theme.surface,
+          '--color-win-dark': darken(theme.surface, 0.5),
         }}
         className="contents"
       >

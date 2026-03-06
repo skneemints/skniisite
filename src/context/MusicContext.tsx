@@ -55,6 +55,7 @@ const tracks: Track[] = [
 type MusicContextType = {
   isPlaying: boolean;
   currentTrack: Track;
+  tracks: Track[];
   volume: number;
   currentTime: number;
   duration: number;
@@ -62,6 +63,7 @@ type MusicContextType = {
   togglePlay: () => void;
   nextTrack: () => void;
   prevTrack: () => void;
+  selectTrack: (index: number) => void;
   setVolume: (v: number) => void;
   seek: (time: number) => void;
 };
@@ -192,6 +194,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsPlaying(true);
   }, []);
 
+  const selectTrack = useCallback((index: number) => {
+    setTrackIndex(index);
+    setIsPlaying(true);
+  }, []);
+
   const seek = useCallback((time: number) => {
     if (audioRef.current) {
       audioRef.current.currentTime = time;
@@ -204,9 +211,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   return (
-    <MusicContext.Provider value={{ 
-      isPlaying, currentTrack: tracks[trackIndex], volume, currentTime, duration, analyser: analyserRef.current,
-      togglePlay, nextTrack, prevTrack, setVolume: updateVolume, seek 
+    <MusicContext.Provider value={{
+      isPlaying, currentTrack: tracks[trackIndex], tracks, volume, currentTime, duration, analyser: analyserRef.current,
+      togglePlay, nextTrack, prevTrack, selectTrack, setVolume: updateVolume, seek
     }}>
       {children}
     </MusicContext.Provider>

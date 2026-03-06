@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Palette, Settings, Music } from 'lucide-react';
+import { Palette, Settings, Music, List } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useMusic } from '../context/MusicContext';
 import { MusicPlayer } from './MusicPlayer';
@@ -15,6 +15,7 @@ interface TaskbarProps {
 export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, minimizedWindows, onShutdown }) => {
   const [showStart, setShowStart] = useState(false);
   const [showMusic, setShowMusic] = useState(false);
+  const [showPlaylist, setShowPlaylist] = useState(false);
   const { theme } = useTheme();
   const { isPlaying } = useMusic();
 
@@ -31,7 +32,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, min
       {/* Start Button */}
       <button 
         onClick={() => { setShowStart(!showStart); setShowMusic(false); }}
-        className={`h-9 px-4 win95-outset flex items-center gap-2 font-bold relative z-10 active:win95-inset transition-colors ${showStart ? 'win95-inset bg-gray-900' : 'bg-gray-800'}`}
+        className={`h-9 px-4 win95-outset flex items-center gap-2 font-bold relative z-10 active:win95-inset transition-colors ${showStart ? 'win95-inset' : ''}`}
       >
         <div
           className={`w-4 h-4 transition-all ${showStart ? '' : 'opacity-50'}`}
@@ -49,7 +50,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, min
       {/* SkniiTTY Button */}
       <button
         onClick={() => onOpenWindow('terminal')}
-        className={`h-9 px-3 win95-outset flex flex-col items-center justify-center gap-0.5 font-bold active:win95-inset transition-colors hover:bg-gray-700 ${isTerminalActive ? 'win95-inset bg-gray-900' : 'bg-gray-800'}`}
+        className={`h-9 px-3 win95-outset flex flex-col items-center justify-center gap-0.5 font-bold active:win95-inset transition-colors ${isTerminalActive ? 'win95-inset' : ''}`}
         title="SkniiTTY Terminal"
       >
         <div
@@ -73,7 +74,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, min
       {/* Music Icon */}
       <button 
         onClick={() => { setShowMusic(!showMusic); setShowStart(false); }}
-        className={`win95-outset h-9 w-9 flex items-center justify-center relative z-10 hover:bg-gray-800 active:win95-inset ${isPlaying ? 'animate-pulse' : ''} ${showMusic ? 'win95-inset bg-gray-900' : ''}`}
+        className={`win95-outset h-9 w-9 flex items-center justify-center relative z-10 active:win95-inset ${isPlaying ? 'animate-pulse' : ''} ${showMusic ? 'win95-inset' : ''}`}
         style={{ color: theme.primary }}
       >
         <Music className="w-5 h-5" />
@@ -86,7 +87,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, min
       </div>
 
       {/* Clock */}
-      <div className="win95-inset h-9 px-3 flex items-center gap-3 text-xs font-bold bg-black relative z-10" style={{ color: theme.primary }}>
+      <div className="win95-inset h-9 px-3 flex items-center gap-3 text-xs font-bold relative z-10" style={{ color: theme.primary }}>
         <span className="font-mono">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
 
@@ -150,9 +151,17 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, min
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-4 border-b border-gray-700 pb-2">
               <Music className="w-4 h-4" style={{ color: theme.primary }} />
-              <span className="text-xs font-bold tracking-tighter uppercase">Media Player</span>
+              <span className="text-xs font-bold tracking-tighter uppercase flex-1">Media Player</span>
+              <button
+                onClick={() => setShowPlaylist(p => !p)}
+                className="win95-outset p-1 flex items-center justify-center hover:bg-gray-800 active:win95-inset"
+                style={{ color: '#9ca3af' }}
+                title={showPlaylist ? 'Now Playing' : 'Playlist'}
+              >
+                {showPlaylist ? <Music className="w-3 h-3" /> : <List className="w-3 h-3" />}
+              </button>
             </div>
-            <MusicPlayer />
+            <MusicPlayer showPlaylist={showPlaylist} setShowPlaylist={setShowPlaylist} />
           </div>
         </motion.div>
       )}
