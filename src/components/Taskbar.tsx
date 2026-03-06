@@ -25,6 +25,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, min
   const isTerminalActive = isTerminalOpen && !isTerminalMinimized;
 
   return (
+    <>
     <div className={`h-12 win95-outset bg-[#1a1a1a] surface-grit flex items-center px-1 gap-2 relative z-[100] ${isTop ? 'order-first' : 'order-last'}`}>
       
       {/* Start Button */}
@@ -83,67 +84,73 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, min
         <span className="font-mono">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
 
-      {/* START MENU POPUP */}
-      <AnimatePresence>
-        {showStart && (
-          <motion.div 
-            initial={{ y: isTop ? -20 : 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: isTop ? -20 : 20, opacity: 0 }}
-            className={`absolute ${isTop ? 'top-[48px]' : 'bottom-[48px]'} left-0 w-64 win95-outset bg-[#1a1a1a] surface-grit p-1 z-[110]`}
-          >
-            <div className="relative z-10 flex">
-              <div 
-                className="w-6 flex items-end justify-center py-4"
-                style={{ background: `linear-gradient(to bottom, ${theme.accent}, ${theme.primary})` }}
-              >
-                <span className="rotate-180 [writing-mode:vertical-lr] font-bold text-black tracking-widest text-sm uppercase">SKNII OS</span>
-              </div>
-              <div className="flex-1 flex flex-col gap-1 p-1">
-                <button 
-                  onClick={() => { onOpenWindow('theme'); setShowStart(false); }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center gap-2 font-bold text-xs"
-                >
-                  <Palette className="w-4 h-4" /> THEME_COLORS
-                </button>
-                <button 
-                  onClick={() => { onOpenWindow('settings'); setShowStart(false); }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center gap-2 font-bold text-xs"
-                >
-                  <Settings className="w-4 h-4" /> SETTINGS
-                </button>
-                <div className="border-t border-gray-700 my-1" />
-                <button 
-                  onClick={() => { onShutdown(); setShowStart(false); }}
-                  className="w-full text-left px-4 py-2 hover:bg-red-900 font-bold text-xs text-red-500"
-                >
-                  SHUTDOWN
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* MUSIC PLAYER POPUP */}
-      <AnimatePresence>
-        {showMusic && (
-          <motion.div 
-            initial={{ y: isTop ? -20 : 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: isTop ? -20 : 20, opacity: 0 }}
-            className={`absolute ${isTop ? 'top-[48px]' : 'bottom-[48px]'} right-2 w-64 win95-outset bg-[#1a1a1a] surface-grit p-3 z-[110]`}
-          >
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-4 border-b border-gray-700 pb-2">
-                <Music className="w-4 h-4" style={{ color: theme.primary }} />
-                <span className="text-xs font-bold tracking-tighter uppercase">Media Player</span>
-              </div>
-              <MusicPlayer />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
+
+    {/* START MENU — fixed, z-99 so the taskbar (z-100) sits on top of it */}
+    <AnimatePresence>
+      {showStart && (
+        <motion.div
+          initial={{ y: isTop ? '-100%' : '100%', opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: isTop ? '-100%' : '100%', opacity: 0 }}
+          transition={{ duration: 0.2, ease: [0.25, 0, 0, 1] }}
+          className="w-64 win95-outset bg-[#1a1a1a] surface-grit p-1"
+          style={{ position: 'fixed', [isTop ? 'top' : 'bottom']: 48, left: 0, zIndex: 99 }}
+        >
+          <div className="relative z-10 flex">
+            <div
+              className="w-6 flex items-end justify-center py-4"
+              style={{ background: `linear-gradient(to bottom, ${theme.accent}, ${theme.primary})` }}
+            >
+              <span className="rotate-180 [writing-mode:vertical-lr] font-bold text-black tracking-widest text-sm uppercase">SKNII OS</span>
+            </div>
+            <div className="flex-1 flex flex-col gap-1 p-1">
+              <button
+                onClick={() => { onOpenWindow('theme'); setShowStart(false); }}
+                className="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center gap-2 font-bold text-xs"
+              >
+                <Palette className="w-4 h-4" /> THEME_COLORS
+              </button>
+              <button
+                onClick={() => { onOpenWindow('settings'); setShowStart(false); }}
+                className="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center gap-2 font-bold text-xs"
+              >
+                <Settings className="w-4 h-4" /> SETTINGS
+              </button>
+              <div className="border-t border-gray-700 my-1" />
+              <button
+                onClick={() => { onShutdown(); setShowStart(false); }}
+                className="w-full text-left px-4 py-2 hover:bg-red-900 font-bold text-xs text-red-500"
+              >
+                SHUTDOWN
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* MUSIC PLAYER — fixed, z-99 so the taskbar (z-100) sits on top of it */}
+    <AnimatePresence>
+      {showMusic && (
+        <motion.div
+          initial={{ y: isTop ? '-100%' : '100%', opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: isTop ? '-100%' : '100%', opacity: 0 }}
+          transition={{ duration: 0.2, ease: [0.25, 0, 0, 1] }}
+          className="w-64 win95-outset bg-[#1a1a1a] surface-grit p-3"
+          style={{ position: 'fixed', [isTop ? 'top' : 'bottom']: 48, right: 8, zIndex: 99 }}
+        >
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-4 border-b border-gray-700 pb-2">
+              <Music className="w-4 h-4" style={{ color: theme.primary }} />
+              <span className="text-xs font-bold tracking-tighter uppercase">Media Player</span>
+            </div>
+            <MusicPlayer />
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   );
 };

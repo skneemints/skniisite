@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, Square, Minus } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -26,6 +26,17 @@ export const Window: React.FC<WindowProps> = ({
 }) => {
   const { theme } = useTheme();
   const isTop = theme.taskbarPosition === 'top';
+  const contentRef = useRef<HTMLDivElement>(null);
+  // false while the opening animation plays, then flips to true.
+  // Only after it's true do we add flex-1 — adding it during the animation
+  // causes the browser to ignore height:0 (flex-basis falls back to content size).
+  const [contentReady, setContentReady] = useState(isMaximized);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.style.height = '';
+    }
+  }, [contentReady, isMaximized]);
 
   const maximizedStyles = isMaximized ? {
     top: isTop ? '48px' : '0',
@@ -106,21 +117,27 @@ export const Window: React.FC<WindowProps> = ({
         </div>
       </div>
 
-      {/* Content — two sequential animations on the same wrapper:
-          1. height 0→auto slides content down from the titlebar (phase 2)
-          2. clipPath left→right expands content horizontally (phase 3)
-          Titlebar is untouched so it always shows at full width. */}
+      {/* Content — two sequential animations on mount:
+          1. height 0→auto  — slides down from the titlebar
+          2. clipPath        — expands horizontally (delayed)
+          flex-1 is withheld until the animation finishes so the browser
+          doesn't override height:0 via flex-basis content fallback.
+          Once ready, the inline height is cleared so flex-1 can fill
+          the window correctly when maximized. */}
       <motion.div
-        initial={isMaximized ? {} : { height: 0, clipPath: 'inset(0 100% 0 0)' }}
-        animate={{ height: 'auto', clipPath: 'inset(0 0% 0 0)' }}
+        ref={contentRef}
+        className={`overflow-hidden flex flex-col${contentReady ? ' flex-1 min-h-0' : ''}`}
+        initial={contentReady ? {} : { height: 0 }}
+        animate={!contentReady ? { height: 'auto' } : {}}
         transition={{
-          height:    { duration: 0.2,  delay: isMaximized ? 0 : 0.1,  ease: [0.25, 0, 0, 1] },
-          clipPath:  { duration: 0.25, delay: isMaximized ? 0 : 0.32, ease: [0.2,  0, 0, 1] },
+          height: { duration: 0.22, delay: 0.08, ease: [0.25, 0, 0, 1] },
         }}
-        style={{ overflow: 'hidden' }}
+        onAnimationComplete={() => {
+          if (!contentReady) setContentReady(true);
+        }}
       >
         <div
-          className={`${flush ? 'win95-inset' : 'p-4 win95-inset m-1'} text-sm font-mono text-gray-300 min-h-[100px] bg-black/40 backdrop-blur-sm relative z-10 overflow-hidden flex flex-col`}
+          className={`${flush ? 'win95-inset' : 'p-4 win95-inset m-1'} text-sm font-mono text-gray-300 bg-black/40 backdrop-blur-sm relative z-10 overflow-hidden flex flex-col flex-1 min-h-0`}
         >
           {children}
         </div>
