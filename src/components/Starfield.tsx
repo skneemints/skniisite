@@ -17,8 +17,8 @@ export const Starfield: React.FC = () => {
   const mouse = useRef({ x: 0, y: 0 });
 
   // Onset detection (spectral flux)
-  const freqDataRef = useRef<Uint8Array | null>(null);
-  const prevFreqDataRef = useRef<Uint8Array | null>(null);
+  const freqDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const prevFreqDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const fluxAvgRef = useRef(0);       // slow avg of flux → adaptive onset threshold
   const lastOnsetTimeRef = useRef(0); // cooldown between recorded onsets
 

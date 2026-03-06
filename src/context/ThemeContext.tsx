@@ -19,16 +19,16 @@ type ThemeContextType = {
 };
 
 const defaultTheme: Theme = {
-  primary: '#05d9e8',   // Cyan
-  secondary: '#ff2a6d', // Pink
+  primary: '#f9c80e',   // Gold
+  secondary: '#ab9150', // Muted gold
   accent: '#bd00ff',    // Purple
-  surface: '#1a1a1a',   // System UI background (taskbar, frames)
+  surface: '#004d4c',   // Deep teal
   taskbarPosition: 'top',
   crtEnabled: true,
   showDesktopIcons: false,
   starColor: '#ffffff',
-  starDirection: 'down',
-  starSpeed: 1,
+  starDirection: 'towards',
+  starSpeed: 0.1,
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
