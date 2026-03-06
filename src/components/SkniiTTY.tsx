@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { MANUAL_ENTRIES } from '../constants/manual';
 
 interface LogEntry {
   type: 'header' | 'output' | 'error' | 'input';
@@ -60,11 +61,31 @@ export const SkniiTTY: React.FC<{ onCrash?: () => void }> = ({ onCrash }) => {
       case 'help':
         newHistory.push({ type: 'output', text: 'Available commands:' });
         newHistory.push({ type: 'output', text: '  help     - Show this message' });
+        newHistory.push({ type: 'output', text: '  manual   - View the SkniiOS manual' });
         newHistory.push({ type: 'output', text: '  clear    - Clear the terminal' });
         newHistory.push({ type: 'output', text: '  date     - Show current date/time' });
         newHistory.push({ type: 'output', text: '  whoami   - Show current user' });
         newHistory.push({ type: 'output', text: '  version  - Show OS version' });
         newHistory.push({ type: 'output', text: '  theme    - Show current theme primary color' });
+        break;
+      case 'manual':
+        {
+          const args = cmd.trim().split(' ');
+          if (args.length === 1) {
+            newHistory.push({ type: 'output', text: 'SkniiOS Manual - Available entries:' });
+            Object.keys(MANUAL_ENTRIES).forEach(key => {
+              newHistory.push({ type: 'output', text: `  manual ${key}` });
+            });
+          } else {
+            const entry = MANUAL_ENTRIES[args[1].toLowerCase()];
+            if (entry) {
+              newHistory.push({ type: 'header', text: `--- ${entry.title} ---` });
+              newHistory.push({ type: 'output', text: entry.content });
+            } else {
+              newHistory.push({ type: 'error', text: `Manual entry not found: ${args[1]}` });
+            }
+          }
+        }
         break;
       case 'clear':
         setHistory([]);

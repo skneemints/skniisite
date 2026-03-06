@@ -10,7 +10,8 @@ import { WelcomeWindow } from './components/WelcomeWindow';
 import { SkniiTTY } from './components/SkniiTTY';
 import { MouseTrail } from './components/MouseTrail';
 import { BSOD } from './components/BSOD';
-import { Palette, Settings, Cpu, Monitor, ExternalLink, Plus, Trash2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Edit2, Check, Image as ImageIcon, Layout, Box, Download, Upload } from 'lucide-react';
+import { Palette, Settings, Cpu, Monitor, ExternalLink, Plus, Trash2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Edit2, Check, Image as ImageIcon, Layout, Box, Download, Upload, ListTree, BookOpen } from 'lucide-react';
+import { ManualWindow } from './components/ManualWindow';
 
 const AVAILABLE_ICONS = [
   { label: 'Globe', path: '/assets/icons/globe.svg' },
@@ -27,7 +28,7 @@ const AVAILABLE_ICONS = [
 
 const ShortcutConfigWindow = () => {
   const { theme } = useTheme();
-  const { groups, settings, updateSettings, addGroup, removeGroup, updateGroup, addLink, removeLink, reorderGroups, reorderLinks, importConfig } = useUserLinks();
+  const { groups, settings, updateSettings, addGroup, removeGroup, updateGroup, addSubGroup, removeSubGroup, updateSubGroup, addLink, removeLink, reorderGroups, reorderLinks, reorderSubGroups, importConfig, clearConfig } = useUserLinks();
   const [activeTab, setActiveTab] = useState<'shortcuts' | 'appearance' | 'data'>('shortcuts');
   
   // Group editing state
@@ -37,12 +38,20 @@ const ShortcutConfigWindow = () => {
   const [editGroupName, setEditGroupName] = useState('');
   const [editGroupColor, setEditGroupColor] = useState('');
 
+  // SubGroup editing state
+  const [newSubName, setNewSubName] = useState('');
+  const [newSubColor, setNewSubColor] = useState('');
+  const [editingSubId, setEditingSubId] = useState<string | null>(null);
+  const [editSubName, setEditSubName] = useState('');
+  const [editSubColor, setEditSubColor] = useState('');
+
   // Link editing state
   const [newLinkLabel, setNewLinkLabel] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newLinkIcon, setNewLinkIcon] = useState('');
   const [newLinkColor, setNewLinkColor] = useState('');
   const [activeGroupId, setActiveGroupId] = useState<string | null>(groups[0]?.id || null);
+  const [activeSubGroupId, setActiveSubGroupId] = useState<string | null>(null);
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
 
@@ -52,6 +61,15 @@ const ShortcutConfigWindow = () => {
       addGroup(newGroupName.trim(), newGroupColor || undefined);
       setNewGroupName('');
       setNewGroupColor('');
+    }
+  };
+
+  const handleAddSubGroup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (activeGroupId && newSubName.trim()) {
+      addSubGroup(activeGroupId, newSubName.trim(), newSubColor || undefined);
+      setNewSubName('');
+      setNewSubColor('');
     }
   };
 
@@ -68,14 +86,15 @@ const ShortcutConfigWindow = () => {
       if (editingLinkId) {
         const group = groups.find(g => g.id === activeGroupId);
         if (group) {
-          const newLinks = group.links.map(l => 
-            l.id === editingLinkId ? { ...l, ...linkData } : l
-          );
-          reorderLinks(activeGroupId, newLinks);
+          const links = activeSubGroupId 
+            ? group.subgroups?.find(s => s.id === activeSubGroupId)?.links || []
+            : group.links;
+          const newLinks = links.map(l => l.id === editingLinkId ? { ...l, ...linkData } : l);
+          reorderLinks(activeGroupId, activeSubGroupId, newLinks);
         }
         setEditingLinkId(null);
       } else {
-        addLink(activeGroupId, linkData);
+        addLink(activeGroupId, activeSubGroupId, linkData);
       }
       setNewLinkLabel('');
       setNewLinkUrl('');
@@ -85,8 +104,9 @@ const ShortcutConfigWindow = () => {
     }
   };
 
-  const startEditLink = (groupId: string, link: any) => {
+  const startEditLink = (groupId: string, subGroupId: string | null, link: any) => {
     setActiveGroupId(groupId);
+    setActiveSubGroupId(subGroupId);
     setEditingLinkId(link.id);
     setNewLinkLabel(link.label);
     setNewLinkUrl(link.url);
@@ -112,14 +132,28 @@ const ShortcutConfigWindow = () => {
     }
   };
 
-  const moveLink = (groupId: string, index: number, direction: 'up' | 'down') => {
+  const moveSubGroup = (groupId: string, index: number, direction: 'left' | 'right') => {
+    const group = groups.find(g => g.id === groupId);
+    if (!group || !group.subgroups) return;
+    const newSubs = [...group.subgroups];
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex >= 0 && targetIndex < newSubs.length) {
+      [newSubs[index], newSubs[targetIndex]] = [newSubs[targetIndex], newSubs[index]];
+      reorderSubGroups(groupId, newSubs);
+    }
+  };
+
+  const moveLink = (groupId: string, subGroupId: string | null, index: number, direction: 'up' | 'down') => {
     const group = groups.find(g => g.id === groupId);
     if (!group) return;
-    const newLinks = [...group.links];
+    const links = subGroupId 
+      ? group.subgroups?.find(s => s.id === subGroupId)?.links || []
+      : group.links;
+    const newLinks = [...links];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex >= 0 && targetIndex < newLinks.length) {
       [newLinks[index], newLinks[targetIndex]] = [newLinks[targetIndex], newLinks[index]];
-      reorderLinks(groupId, newLinks);
+      reorderLinks(groupId, subGroupId, newLinks);
     }
   };
 
@@ -155,8 +189,15 @@ const ShortcutConfigWindow = () => {
     reader.readAsText(file);
   };
 
+  const handleClear = () => {
+    if (confirm('Are you sure you want to clear ALL shortcuts and settings? This cannot be undone.')) {
+      clearConfig();
+    }
+  };
+
   const activeGroup = groups.find(g => g.id === activeGroupId);
-  const effectiveLinkColor = newLinkColor || activeGroup?.color || theme.primary;
+  const activeSub = activeGroup?.subgroups?.find(s => s.id === activeSubGroupId);
+  const effectiveLinkColor = newLinkColor || activeSub?.color || activeGroup?.color || theme.primary;
 
   return (
     <div className="flex h-full gap-4 overflow-hidden">
@@ -189,130 +230,145 @@ const ShortcutConfigWindow = () => {
       <div className="flex-1 overflow-hidden">
         {activeTab === 'shortcuts' ? (
           <div className="flex flex-col h-full gap-4 overflow-hidden">
+            {/* Group Creation */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase opacity-70">Groups (Columns)</label>
+              <label className="text-[10px] font-bold uppercase opacity-70">Groups (Outer Container)</label>
               <form onSubmit={handleAddGroup} className="flex gap-1">
                 <input 
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   className="flex-1 bg-gray-900 border-none px-2 py-1 text-xs win95-inset"
-                  placeholder="New group name..."
+                  placeholder="New group..."
                   style={{ color: theme.primary }}
                 />
-                <input 
-                  type="color"
-                  value={newGroupColor}
-                  onChange={(e) => setNewGroupColor(e.target.value)}
-                  className="w-8 h-8 bg-transparent border-none cursor-pointer"
-                  title="Group Color (Optional)"
-                />
-                <button type="submit" className="px-3 py-1 win95-outset text-[10px] font-bold uppercase hover:bg-gray-800">
-                  <Plus className="w-3 h-3" />
-                </button>
+                <input type="color" value={newGroupColor} onChange={(e) => setNewGroupColor(e.target.value)} className="w-8 h-8 bg-transparent border-none cursor-pointer" />
+                <button type="submit" className="px-3 py-1 win95-outset text-[10px] font-bold uppercase hover:bg-gray-800"><Plus className="w-3 h-3" /></button>
               </form>
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+            {/* Groups & Subgroups View */}
+            <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar flex-1 min-h-0">
               {groups.map((group, idx) => (
                 <div 
                   key={group.id} 
-                  className={`min-w-[150px] p-2 win95-outset bg-black/40 flex flex-col gap-2 cursor-pointer transition-colors ${activeGroupId === group.id ? 'ring-1 ring-inset ring-white/20 bg-black/60' : 'hover:bg-black/50'}`}
+                  className={`min-w-[200px] p-2 win95-outset bg-black/40 flex flex-col gap-2 cursor-pointer transition-colors h-fit ${activeGroupId === group.id && !activeSubGroupId ? 'ring-1 ring-inset ring-white/20 bg-black/60' : 'hover:bg-black/50'}`}
                   style={group.color ? { borderColor: `${group.color}44` } : {}}
-                  onClick={() => setActiveGroupId(group.id)}
+                  onClick={() => { setActiveGroupId(group.id); setActiveSubGroupId(null); }}
                 >
                   <div className="flex items-center justify-between gap-1">
                     {editingGroupId === group.id ? (
                       <div className="flex-1 flex flex-col gap-1" onClick={e => e.stopPropagation()}>
                         <div className="flex gap-1">
-                          <input 
-                            value={editGroupName}
-                            onChange={(e) => setEditGroupName(e.target.value)}
-                            className="flex-1 bg-gray-900 text-[10px] px-1"
-                            autoFocus
-                          />
-                          <button onClick={() => { updateGroup(group.id, { name: editGroupName, color: editGroupColor || undefined }); setEditingGroupId(null); }}>
-                            <Check className="w-3 h-3 text-green-500" />
-                          </button>
+                          <input value={editGroupName} onChange={(e) => setEditGroupName(e.target.value)} className="flex-1 bg-gray-900 text-[10px] px-1" autoFocus />
+                          <button onClick={() => { updateGroup(group.id, { name: editGroupName, color: editGroupColor || undefined }); setEditingGroupId(null); }}><Check className="w-3 h-3 text-green-500" /></button>
                         </div>
-                        <input 
-                          type="color"
-                          value={editGroupColor}
-                          onChange={(e) => setEditGroupColor(e.target.value)}
-                          className="w-full h-4 bg-transparent border-none"
-                        />
+                        <input type="color" value={editGroupColor} onChange={(e) => setEditGroupColor(e.target.value)} className="w-full h-4 bg-transparent border-none" />
                       </div>
                     ) : (
                       <>
-                        <span className="text-[10px] font-bold truncate flex-1" style={{ color: group.color || theme.accent }}>{group.name}</span>
+                        <span className="text-[10px] font-bold truncate flex-1 uppercase tracking-widest" style={{ color: group.color || theme.accent }}>{group.name}</span>
                         <div className="flex gap-0.5">
-                          <button onClick={(e) => { e.stopPropagation(); setEditingGroupId(group.id); setEditGroupName(group.name); setEditGroupColor(group.color || ''); }} className="hover:text-white"><Edit2 className="w-2.5 h-2.5" /></button>
-                          <button onClick={(e) => { e.stopPropagation(); moveGroup(idx, 'left'); }} disabled={idx === 0} className="disabled:opacity-30"><ArrowLeft className="w-2.5 h-2.5" /></button>
-                          <button onClick={(e) => { e.stopPropagation(); moveGroup(idx, 'right'); }} disabled={idx === groups.length - 1} className="disabled:opacity-30"><ArrowRight className="w-2.5 h-2.5" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); setEditingGroupId(group.id); setEditGroupName(group.name); setEditGroupColor(group.color || ''); }}><Edit2 className="w-2.5 h-2.5" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); moveGroup(idx, 'left'); }} disabled={idx === 0}><ArrowLeft className="w-2.5 h-2.5" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); moveGroup(idx, 'right'); }} disabled={idx === groups.length - 1}><ArrowRight className="w-2.5 h-2.5" /></button>
                           <button onClick={(e) => { e.stopPropagation(); removeGroup(group.id); }} className="text-red-500"><Trash2 className="w-2.5 h-2.5" /></button>
                         </div>
                       </>
                     )}
                   </div>
-                  
-                  <div className="flex-1 overflow-y-auto max-h-[150px] space-y-1 custom-scrollbar">
+
+                  {/* Direct Links */}
+                  <div className="space-y-1">
                     {group.links.map((link, lIdx) => (
                       <div 
                         key={link.id} 
                         className={`text-[9px] p-1 win95-inset flex items-center justify-between group/link ${editingLinkId === link.id ? 'bg-white/10' : 'bg-black/20 hover:bg-black/30'}`}
-                        style={link.color ? { borderLeftColor: link.color } : {}}
-                        onClick={(e) => { e.stopPropagation(); startEditLink(group.id, link); }}
+                        onClick={(e) => { e.stopPropagation(); startEditLink(group.id, null, link); }}
                       >
-                                          <div className="flex items-center gap-1 flex-1 min-w-0">
-                                            {link.icon && <img src={link.icon} alt="" className="w-3 h-3 object-contain" />}
-                                            <span className="truncate" style={{ color: link.color || group.color || theme.primary }}>{link.label}</span>
-                                          </div>
-                        
+                        <span className="truncate" style={{ color: link.color || group.color || theme.primary }}>{link.label}</span>
                         <div className="flex gap-0.5 opacity-0 group-hover/link:opacity-100 transition-opacity">
-                          <button onClick={(e) => { e.stopPropagation(); moveLink(group.id, lIdx, 'up'); }} disabled={lIdx === 0} className="disabled:opacity-30"><ArrowUp className="w-2 h-2" /></button>
-                          <button onClick={(e) => { e.stopPropagation(); moveLink(group.id, lIdx, 'down'); }} disabled={lIdx === group.links.length - 1} className="disabled:opacity-30"><ArrowDown className="w-2 h-2" /></button>
-                          <button onClick={(e) => { e.stopPropagation(); removeLink(group.id, link.id); }} className="text-red-500"><Trash2 className="w-2 h-2" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); moveLink(group.id, null, lIdx, 'up'); }} disabled={lIdx === 0}><ArrowUp className="w-2 h-2" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); moveLink(group.id, null, lIdx, 'down'); }} disabled={lIdx === group.links.length - 1}><ArrowDown className="w-2 h-2" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); removeLink(group.id, null, link.id); }} className="text-red-500"><Trash2 className="w-2 h-2" /></button>
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Subgroups */}
+                  <div className="mt-2 space-y-2">
+                    {group.subgroups?.map((sub, sIdx) => (
+                      <div 
+                        key={sub.id} 
+                        className={`p-1.5 win95-inset bg-black/20 space-y-1 ${activeSubGroupId === sub.id ? 'ring-1 ring-white/20 bg-black/40' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); setActiveGroupId(group.id); setActiveSubGroupId(sub.id); }}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          {editingSubId === sub.id ? (
+                            <div className="flex-1 flex gap-1" onClick={e => e.stopPropagation()}>
+                              <input value={editSubName} onChange={(e) => setEditSubName(e.target.value)} className="flex-1 bg-gray-900 text-[9px] px-1" />
+                              <input type="color" value={editSubColor} onChange={(e) => setEditSubColor(e.target.value)} className="w-4 h-4 bg-transparent border-none" />
+                              <button onClick={() => { updateSubGroup(group.id, sub.id, { name: editSubName, color: editSubColor || undefined }); setEditingSubId(null); }}><Check className="w-3 h-3 text-green-500" /></button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-[9px] font-bold truncate flex-1" style={{ color: sub.color || group.color || theme.accent }}>{sub.name}</span>
+                              <div className="flex gap-0.5">
+                                <button onClick={(e) => { e.stopPropagation(); setEditingSubId(sub.id); setEditSubName(sub.name); setEditSubColor(sub.color || ''); }}><Edit2 className="w-2 h-2" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); moveSubGroup(group.id, sIdx, 'left'); }} disabled={sIdx === 0}><ArrowLeft className="w-2 h-2" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); moveSubGroup(group.id, sIdx, 'right'); }} disabled={sIdx === (group.subgroups?.length || 0) - 1}><ArrowRight className="w-2 h-2" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); removeSubGroup(group.id, sub.id); }} className="text-red-500"><Trash2 className="w-2 h-2" /></button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <div className="space-y-0.5">
+                          {sub.links.map((link, lIdx) => (
+                            <div 
+                              key={link.id} 
+                              className={`text-[8px] p-0.5 border-l-2 flex items-center justify-between group/slink ${editingLinkId === link.id ? 'bg-white/10' : 'hover:bg-black/20'}`}
+                              style={{ borderLeftColor: link.color || sub.color || group.color || theme.primary }}
+                              onClick={(e) => { e.stopPropagation(); startEditLink(group.id, sub.id, link); }}
+                            >
+                              <span className="truncate">{link.label}</span>
+                              <div className="flex gap-0.5 opacity-0 group-hover/slink:opacity-100">
+                                <button onClick={(e) => { e.stopPropagation(); moveLink(group.id, sub.id, lIdx, 'up'); }} disabled={lIdx === 0}><ArrowUp className="w-1.5 h-1.5" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); moveLink(group.id, sub.id, lIdx, 'down'); }} disabled={lIdx === sub.links.length - 1}><ArrowDown className="w-1.5 h-1.5" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); removeLink(group.id, sub.id, link.id); }} className="text-red-500"><Trash2 className="w-1.5 h-1.5" /></button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    <form onSubmit={handleAddSubGroup} className="flex gap-1" onClick={e => e.stopPropagation()}>
+                      <input value={newSubName} onChange={(e) => setNewSubName(e.target.value)} className="flex-1 bg-gray-900 border-none px-1 text-[8px] win95-inset h-5" placeholder="Add subgroup..." />
+                      <button type="submit" className="px-1 win95-outset text-[8px] font-bold hover:bg-gray-800"><ListTree className="w-2 h-2" /></button>
+                    </form>
                   </div>
                 </div>
               ))}
             </div>
 
+            {/* Link Management */}
             {activeGroupId && (
-              <div className="space-y-2 p-3 win95-inset bg-black/30 mt-auto border-t border-white/5">
+              <div className="space-y-2 p-3 win95-inset bg-black/30 mt-auto border-t border-white/5 h-fit shrink-0">
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-[10px] font-bold uppercase opacity-70">
-                    {editingLinkId ? 'Edit' : 'Add'} Shortcut to {groups.find(g => g.id === activeGroupId)?.name}
+                    {editingLinkId ? 'Edit' : 'Add'} Shortcut to {activeSubGroupId ? `Subgroup: ${activeSub?.name}` : `Group: ${activeGroup?.name}`}
                   </div>
-                  {editingLinkId && (
-                    <button onClick={cancelEdit} className="text-[8px] uppercase hover:text-white px-2 py-0.5 win95-outset bg-red-900/20 text-red-500">Cancel</button>
-                  )}
+                  {editingLinkId && <button onClick={cancelEdit} className="text-[8px] uppercase hover:text-white px-2 py-0.5 win95-outset bg-red-900/20 text-red-500">Cancel</button>}
                 </div>
                 
                 <form onSubmit={handleAddLink} className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[8px] font-bold uppercase opacity-50 block">Label</label>
-                      <input 
-                        value={newLinkLabel}
-                        onChange={(e) => setNewLinkLabel(e.target.value)}
-                        className="w-full bg-gray-900 border-none px-2 py-1.5 text-xs win95-inset"
-                        placeholder="e.g. GitHub"
-                        style={{ color: effectiveLinkColor }}
-                        required
-                      />
+                      <input value={newLinkLabel} onChange={(e) => setNewLinkLabel(e.target.value)} className="w-full bg-gray-900 border-none px-2 py-1.5 text-xs win95-inset" placeholder="e.g. GitHub" style={{ color: effectiveLinkColor }} required />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[8px] font-bold uppercase opacity-50 block">URL</label>
-                      <input 
-                        value={newLinkUrl}
-                        onChange={(e) => setNewLinkUrl(e.target.value)}
-                        className="w-full bg-gray-900 border-none px-2 py-1.5 text-xs win95-inset"
-                        placeholder="e.g. github.com"
-                        style={{ color: theme.primary }}
-                        required
-                      />
+                      <input value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} className="w-full bg-gray-900 border-none px-2 py-1.5 text-xs win95-inset" placeholder="e.g. github.com" style={{ color: theme.primary }} required />
                     </div>
                   </div>
 
@@ -320,38 +376,15 @@ const ShortcutConfigWindow = () => {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <label className="text-[8px] font-bold uppercase opacity-50 block">Icon</label>
-                        <button 
-                          type="button"
-                          onClick={() => setShowIconPicker(!showIconPicker)}
-                          className={`text-[8px] uppercase px-1 py-0.5 win95-outset flex items-center gap-1 ${showIconPicker ? 'bg-white/10' : 'bg-black/20'}`}
-                        >
-                          <ImageIcon className="w-2.5 h-2.5" /> {showIconPicker ? 'Close' : 'Picker'}
-                        </button>
+                        <button type="button" onClick={() => setShowIconPicker(!showIconPicker)} className={`text-[8px] uppercase px-1 py-0.5 win95-outset flex items-center gap-1 ${showIconPicker ? 'bg-white/10' : 'bg-black/20'}`}><ImageIcon className="w-2.5 h-2.5" /> {showIconPicker ? 'Close' : 'Picker'}</button>
                       </div>
-                      <input 
-                        value={newLinkIcon}
-                        onChange={(e) => setNewLinkIcon(e.target.value)}
-                        className="w-full bg-gray-900 border-none px-2 py-1.5 text-xs win95-inset"
-                        placeholder="/path/to/icon.svg"
-                        style={{ color: effectiveLinkColor }}
-                      />
+                      <input value={newLinkIcon} onChange={(e) => setNewLinkIcon(e.target.value)} className="w-full bg-gray-900 border-none px-2 py-1.5 text-xs win95-inset" placeholder="/path/to/icon.svg" style={{ color: effectiveLinkColor }} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[8px] font-bold uppercase opacity-50 block">Shortcut Color</label>
+                      <label className="text-[8px] font-bold uppercase opacity-50 block">Color Override</label>
                       <div className="flex gap-2">
-                        <input 
-                          type="color"
-                          value={newLinkColor || activeGroup?.color || theme.primary}
-                          onChange={(e) => setNewLinkColor(e.target.value)}
-                          className="w-8 h-8 bg-transparent border-none cursor-pointer"
-                        />
-                        <button 
-                          type="button" 
-                          onClick={() => setNewLinkColor('')}
-                          className="text-[8px] uppercase opacity-50 hover:opacity-100"
-                        >
-                          Reset
-                        </button>
+                        <input type="color" value={newLinkColor || activeSub?.color || activeGroup?.color || theme.primary} onChange={(e) => setNewLinkColor(e.target.value)} className="w-8 h-8 bg-transparent border-none cursor-pointer" />
+                        <button type="button" onClick={() => setNewLinkColor('')} className="text-[8px] uppercase opacity-50 hover:opacity-100">Reset</button>
                       </div>
                     </div>
                   </div>
@@ -359,14 +392,7 @@ const ShortcutConfigWindow = () => {
                   {showIconPicker && (
                     <div className="win95-inset bg-black/40 p-2 grid grid-cols-10 gap-1 overflow-y-auto max-h-[80px] custom-scrollbar">
                       {AVAILABLE_ICONS.map(icon => (
-                        <button
-                          key={icon.path}
-                          type="button"
-                          onClick={() => setNewLinkIcon(icon.path)}
-                          className={`p-1 win95-outset hover:bg-white/10 transition-colors flex items-center justify-center ${newLinkIcon === icon.path ? 'ring-1 ring-white/30' : ''}`}
-                        >
-                          <img src={icon.path} alt="" className="w-4 h-4 object-contain" />
-                        </button>
+                        <button key={icon.path} type="button" onClick={() => setNewLinkIcon(icon.path)} className={`p-1 win95-outset hover:bg-white/10 transition-colors flex items-center justify-center ${newLinkIcon === icon.path ? 'ring-1 ring-white/30' : ''}`}><img src={icon.path} alt="" className="w-4 h-4 object-contain" /></button>
                       ))}
                     </div>
                   )}
@@ -461,6 +487,15 @@ const ShortcutConfigWindow = () => {
             <div className="p-4 win95-inset bg-red-900/10 border border-red-900/30 text-[10px] text-red-500 italic">
               Warning: Importing a configuration will overwrite your current shortcuts and settings.
             </div>
+
+            <div className="mt-auto pt-4 border-t border-white/5">
+              <button 
+                onClick={handleClear}
+                className="w-full py-2 win95-outset text-[10px] font-bold uppercase hover:bg-red-950 transition-colors text-red-500"
+              >
+                Clear All Configuration
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -502,50 +537,102 @@ const ShortcutsDashboard = ({ onOpenConfig }: { onOpenConfig: () => void }) => {
             {groups.map(group => {
               const groupColor = group.color || theme.accent;
               return (
-                <div key={group.id} className="flex flex-col gap-6 min-w-[120px]">
+                <div key={group.id} className="flex flex-col gap-6">
                   <h3 
                     className="text-sm font-bold uppercase tracking-[0.2em] border-b pb-2 mb-2 text-center" 
                     style={{ color: groupColor, borderColor: `${groupColor}33` }}
                   >
                     {group.name}
                   </h3>
-                  <div className="flex flex-col gap-4">
-                    {group.links.map(link => {
-                      const linkColor = link.color || group.color || theme.primary;
-                      return (
-                        <button
-                          key={link.id}
-                          onClick={() => window.open(link.url, '_blank')}
-                          className="flex flex-col items-center gap-2 group transition-transform hover:scale-110 active:scale-95"
-                        >
-                          <div 
-                            className={`p-3 rounded-sm transition-colors relative overflow-hidden flex items-center justify-center ${settings.showFrames ? 'win95-outset bg-black/40 group-hover:bg-black/60' : 'bg-transparent'}`}
-                            style={settings.showFrames ? {} : { color: linkColor }}
-                          >
-                            {link.icon ? (
+                  <div className="flex gap-10 items-start">
+                    {/* Direct Links Column */}
+                    {group.links.length > 0 && (
+                      <div className="flex flex-col gap-4">
+                        {group.links.map(link => {
+                          const linkColor = link.color || group.color || theme.primary;
+                          return (
+                            <button
+                              key={link.id}
+                              onClick={() => window.open(link.url, '_blank')}
+                              className="flex flex-col items-center gap-2 group transition-transform hover:scale-110 active:scale-95"
+                            >
                               <div 
-                                className="w-8 h-8 transition-all"
-                                style={{ 
-                                  backgroundColor: linkColor,
-                                  WebkitMask: `url(${link.icon}) no-repeat center / contain`,
-                                  mask: `url(${link.icon}) no-repeat center / contain`,
-                                  filter: !settings.showFrames ? `drop-shadow(0 0 5px ${linkColor}66)` : 'none',
-                                }}
-                              />
-                            ) : (
-                              <ExternalLink className="w-8 h-8" style={{ color: linkColor }} />
-                            )}
-                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                          <span 
-                            className="text-[10px] font-bold uppercase tracking-wider text-center max-w-[100px] break-words" 
-                            style={{ color: linkColor, textShadow: settings.showFrames ? '0 0 10px rgba(0,0,0,0.8)' : `0 0 8px ${linkColor}33` }}
-                          >
-                            {link.label}
-                          </span>
-                        </button>
-                      );
-                    })}
+                                className={`p-3 rounded-sm transition-colors relative overflow-hidden flex items-center justify-center ${settings.showFrames ? 'win95-outset bg-black/40 group-hover:bg-black/60' : 'bg-transparent'}`}
+                                style={settings.showFrames ? {} : { color: linkColor }}
+                              >
+                                {link.icon ? (
+                                  <div 
+                                    className="w-8 h-8 transition-all"
+                                    style={{ 
+                                      backgroundColor: linkColor,
+                                      WebkitMask: `url(${link.icon}) no-repeat center / contain`,
+                                      mask: `url(${link.icon}) no-repeat center / contain`,
+                                      filter: !settings.showFrames ? `drop-shadow(0 0 5px ${linkColor}66)` : 'none',
+                                    }}
+                                  />
+                                ) : (
+                                  <ExternalLink className="w-8 h-8" style={{ color: linkColor }} />
+                                )}
+                                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                              <span 
+                                className="text-[10px] font-bold uppercase tracking-wider text-center max-w-[100px] break-words" 
+                                style={{ color: linkColor, textShadow: settings.showFrames ? '0 0 10px rgba(0,0,0,0.8)' : `0 0 8px ${linkColor}33` }}
+                              >
+                                {link.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Subgroup Columns */}
+                    {group.subgroups?.map(sub => (
+                      <div key={sub.id} className="flex flex-col gap-4 min-w-[120px]">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.1em] opacity-60 text-center border-b border-white/5 pb-1" style={{ color: sub.color || groupColor }}>
+                          {sub.name}
+                        </div>
+                        <div className="flex flex-col gap-4">
+                          {sub.links.map(link => {
+                            const linkColor = link.color || sub.color || group.color || theme.primary;
+                            return (
+                              <button
+                                key={link.id}
+                                onClick={() => window.open(link.url, '_blank')}
+                                className="flex flex-col items-center gap-2 group transition-transform hover:scale-110 active:scale-95"
+                              >
+                                <div 
+                                  className={`p-3 rounded-sm transition-colors relative overflow-hidden flex items-center justify-center ${settings.showFrames ? 'win95-outset bg-black/40 group-hover:bg-black/60' : 'bg-transparent'}`}
+                                  style={settings.showFrames ? {} : { color: linkColor }}
+                                >
+                                  {link.icon ? (
+                                    <div 
+                                      className="w-8 h-8 transition-all"
+                                      style={{ 
+                                        backgroundColor: linkColor,
+                                        WebkitMask: `url(${link.icon}) no-repeat center / contain`,
+                                        mask: `url(${link.icon}) no-repeat center / contain`,
+                                        filter: !settings.showFrames ? `drop-shadow(0 0 5px ${linkColor}66)` : 'none',
+                                      }}
+                                    />
+                                  ) : (
+                                    <ExternalLink className="w-8 h-8" style={{ color: linkColor }} />
+                                  )}
+                                  <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <span 
+                                  className="text-[10px] font-bold uppercase tracking-wider text-center max-w-[100px] break-words" 
+                                  style={{ color: linkColor, textShadow: settings.showFrames ? '0 0 10px rgba(0,0,0,0.8)' : `0 0 8px ${linkColor}33` }}
+                                >
+                                  {link.label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               );
@@ -727,7 +814,28 @@ const Desktop = () => {
                 isMaximized={maximizedWindows.includes('welcome')}
                 defaultPosition={{ x: 0, y: 0 }}
               >
-                <WelcomeWindow />
+                <WelcomeWindow onGetStarted={() => toggleWindow('manual')} />
+              </Window>
+            </div>
+          )}
+
+          {openWindows.includes('manual') && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <Window 
+                title="SkniiOS_Manual.hlp" 
+                icon={BookOpen} 
+                onClose={() => closeWindow('manual')}
+                onMinimize={() => minimizeWindow('manual')}
+                onMaximize={() => maximizeWindow('manual')}
+                onFocus={() => focusWindow('manual')}
+                zIndex={getZIndex('manual')}
+                isActive={windowStack[windowStack.length - 1] === 'manual'}
+                isMinimized={minimizedWindows.includes('manual')}
+                isMaximized={maximizedWindows.includes('manual')}
+                defaultPosition={{ x: 0, y: 0 }}
+                className="max-w-3xl w-[90vw]"
+              >
+                <ManualWindow />
               </Window>
             </div>
           )}
@@ -810,7 +918,7 @@ const Desktop = () => {
                 isMaximized={maximizedWindows.includes('settings')}
                 defaultPosition={{ x: 0, y: 0 }}
               >
-                <SettingsWindow />
+                <SettingsWindow onOpenManual={() => toggleWindow('manual')} />
               </Window>
             </div>
           )}

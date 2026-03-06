@@ -8,10 +8,18 @@ export interface UserLink {
   color?: string;
 }
 
+export interface UserSubGroup {
+  id: string;
+  name: string;
+  links: UserLink[];
+  color?: string;
+}
+
 export interface UserLinkGroup {
   id: string;
   name: string;
   links: UserLink[];
+  subgroups: UserSubGroup[];
   color?: string;
 }
 
@@ -26,12 +34,17 @@ interface UserLinksContextType {
   addGroup: (name: string, color?: string) => void;
   removeGroup: (id: string) => void;
   updateGroup: (id: string, updates: Partial<UserLinkGroup>) => void;
-  addLink: (groupId: string, link: Omit<UserLink, 'id'>) => void;
-  removeLink: (groupId: string, linkId: string) => void;
+  addSubGroup: (groupId: string, name: string, color?: string) => void;
+  removeSubGroup: (groupId: string, subGroupId: string) => void;
+  updateSubGroup: (groupId: string, subGroupId: string, updates: Partial<UserSubGroup>) => void;
+  addLink: (groupId: string, subGroupId: string | null, link: Omit<UserLink, 'id'>) => void;
+  removeLink: (groupId: string, subGroupId: string | null, linkId: string) => void;
   reorderGroups: (newGroups: UserLinkGroup[]) => void;
-  reorderLinks: (groupId: string, newLinks: UserLink[]) => void;
+  reorderLinks: (groupId: string, subGroupId: string | null, newLinks: UserLink[]) => void;
+  reorderSubGroups: (groupId: string, newSubGroups: UserSubGroup[]) => void;
   updateSettings: (updates: Partial<UserLinksSettings>) => void;
-  importConfig: (config: { groups: any[], settings: any }) => void;
+  importConfig: (config: { groups: UserLinkGroup[], settings: UserLinksSettings }) => void;
+  clearConfig: () => void;
 }
 
 const UserLinksContext = createContext<UserLinksContextType | undefined>(undefined);
@@ -43,7 +56,7 @@ const defaultSettings: UserLinksSettings = {
 
 export const UserLinksProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [groups, setGroups] = useState<UserLinkGroup[]>(() => {
-    const saved = localStorage.getItem('sknii-link-groups-v2');
+    const saved = localStorage.getItem('sknii-link-groups-v3');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -56,7 +69,7 @@ export const UserLinksProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   const [settings, setSettings] = useState<UserLinksSettings>(() => {
-    const saved = localStorage.getItem('sknii-link-settings');
+    const saved = localStorage.getItem('sknii-link-settings-v3');
     if (saved) {
       try {
         return { ...defaultSettings, ...JSON.parse(saved) };
@@ -68,15 +81,15 @@ export const UserLinksProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('sknii-link-groups-v2', JSON.stringify(groups));
+    localStorage.setItem('sknii-link-groups-v3', JSON.stringify(groups));
   }, [groups]);
 
   useEffect(() => {
-    localStorage.setItem('sknii-link-settings', JSON.stringify(settings));
+    localStorage.setItem('sknii-link-settings-v3', JSON.stringify(settings));
   }, [settings]);
 
   const addGroup = (name: string, color?: string) => {
-    setGroups(prev => [...prev, { id: crypto.randomUUID(), name, links: [], color }]);
+    setGroups(prev => [...prev, { id: crypto.randomUUID(), name, links: [], subgroups: [], color }]);
   };
 
   const removeGroup = (id: string) => {
@@ -87,25 +100,73 @@ export const UserLinksProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setGroups(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
   };
 
-  const addLink = (groupId: string, link: Omit<UserLink, 'id'>) => {
+  const addSubGroup = (groupId: string, name: string, color?: string) => {
     setGroups(prev => prev.map(g => {
       if (g.id === groupId) {
         return {
           ...g,
-          links: [...g.links, { ...link, id: crypto.randomUUID() }]
+          subgroups: [...(g.subgroups || []), { id: crypto.randomUUID(), name, links: [], color }]
         };
       }
       return g;
     }));
   };
 
-  const removeLink = (groupId: string, linkId: string) => {
+  const removeSubGroup = (groupId: string, subGroupId: string) => {
     setGroups(prev => prev.map(g => {
       if (g.id === groupId) {
         return {
           ...g,
-          links: g.links.filter(l => l.id !== linkId)
+          subgroups: (g.subgroups || []).filter(sg => sg.id !== subGroupId)
         };
+      }
+      return g;
+    }));
+  };
+
+  const updateSubGroup = (groupId: string, subGroupId: string, updates: Partial<UserSubGroup>) => {
+    setGroups(prev => prev.map(g => {
+      if (g.id === groupId) {
+        return {
+          ...g,
+          subgroups: (g.subgroups || []).map(sg => sg.id === subGroupId ? { ...sg, ...updates } : sg)
+        };
+      }
+      return g;
+    }));
+  };
+
+  const addLink = (groupId: string, subGroupId: string | null, link: Omit<UserLink, 'id'>) => {
+    setGroups(prev => prev.map(g => {
+      if (g.id === groupId) {
+        if (subGroupId === null) {
+          return { ...g, links: [...g.links, { ...link, id: crypto.randomUUID() }] };
+        } else {
+          return {
+            ...g,
+            subgroups: (g.subgroups || []).map(sg => 
+              sg.id === subGroupId ? { ...sg, links: [...sg.links, { ...link, id: crypto.randomUUID() }] } : sg
+            )
+          };
+        }
+      }
+      return g;
+    }));
+  };
+
+  const removeLink = (groupId: string, subGroupId: string | null, linkId: string) => {
+    setGroups(prev => prev.map(g => {
+      if (g.id === groupId) {
+        if (subGroupId === null) {
+          return { ...g, links: g.links.filter(l => l.id !== linkId) };
+        } else {
+          return {
+            ...g,
+            subgroups: (g.subgroups || []).map(sg => 
+              sg.id === subGroupId ? { ...sg, links: sg.links.filter(l => l.id !== linkId) } : sg
+            )
+          };
+        }
       }
       return g;
     }));
@@ -115,8 +176,24 @@ export const UserLinksProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setGroups(newGroups);
   };
 
-  const reorderLinks = (groupId: string, newLinks: UserLink[]) => {
-    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, links: newLinks } : g));
+  const reorderLinks = (groupId: string, subGroupId: string | null, newLinks: UserLink[]) => {
+    setGroups(prev => prev.map(g => {
+      if (g.id === groupId) {
+        if (subGroupId === null) {
+          return { ...g, links: newLinks };
+        } else {
+          return {
+            ...g,
+            subgroups: (g.subgroups || []).map(sg => sg.id === subGroupId ? { ...sg, links: newLinks } : sg)
+          };
+        }
+      }
+      return g;
+    }));
+  };
+
+  const reorderSubGroups = (groupId: string, newSubGroups: UserSubGroup[]) => {
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, subgroups: newSubGroups } : g));
   };
 
   const updateSettings = (updates: Partial<UserLinksSettings>) => {
@@ -128,6 +205,11 @@ export const UserLinksProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (config.settings) setSettings(config.settings);
   };
 
+  const clearConfig = () => {
+    setGroups([]);
+    setSettings(defaultSettings);
+  };
+
   return (
     <UserLinksContext.Provider value={{ 
       groups, 
@@ -135,12 +217,17 @@ export const UserLinksProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       addGroup, 
       removeGroup, 
       updateGroup, 
+      addSubGroup,
+      removeSubGroup,
+      updateSubGroup,
       addLink, 
       removeLink, 
       reorderGroups, 
       reorderLinks,
+      reorderSubGroups,
       updateSettings,
-      importConfig
+      importConfig,
+      clearConfig
     }}>
       {children}
     </UserLinksContext.Provider>

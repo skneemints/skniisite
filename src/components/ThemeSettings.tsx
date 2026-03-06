@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { HelpCircle } from 'lucide-react';
 
 export const ThemeWindow: React.FC = () => {
   const { theme, updateTheme } = useTheme();
@@ -89,7 +90,7 @@ export const ThemeWindow: React.FC = () => {
   );
 };
 
-export const SettingsWindow: React.FC = () => {
+export const SettingsWindow: React.FC<{ onOpenManual?: () => void }> = ({ onOpenManual }) => {
   const { theme, updateTheme } = useTheme();
 
   return (
@@ -162,6 +163,16 @@ export const SettingsWindow: React.FC = () => {
           className="w-full h-2 bg-gray-900 appearance-none win95-inset"
           style={{ accentColor: theme.primary }}
         />
+      </div>
+
+      <div className="pt-4 border-t border-white/5 flex justify-center">
+        <button 
+          onClick={onOpenManual}
+          className="flex items-center gap-2 px-4 py-2 win95-outset bg-black/40 hover:bg-black/60 transition-colors group"
+        >
+          <HelpCircle className="w-4 h-4 group-hover:scale-110 transition-transform" style={{ color: theme.secondary }} />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 group-hover:text-white">System Info & Help</span>
+        </button>
       </div>
     </div>
   );
