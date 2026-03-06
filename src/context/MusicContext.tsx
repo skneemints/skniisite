@@ -33,7 +33,7 @@ const tracks: Track[] = [
     artwork: "/audio/Oddworld： Abe's Exoddus OST 'War Room'/Oddworld： Abe's Exoddus OST 'War Room'.png"
   },
   {
-    id: 2,
+    id: 6,
     title: 'FEEL_GOOD_INC_64.MP3',
     url: "/audio/Feel Good Inc. done through the mario 64 soundfont/Feel Good Inc. done through the mario 64 soundfont.mp3",
     artwork: "/audio/Feel Good Inc. done through the mario 64 soundfont/Feel Good Inc. done through the mario 64 soundfont.png"
@@ -58,6 +58,7 @@ type MusicContextType = {
   volume: number;
   currentTime: number;
   duration: number;
+  analyser: AnalyserNode | null;
   togglePlay: () => void;
   nextTrack: () => void;
   prevTrack: () => void;
@@ -73,18 +74,27 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [volume, setVolume] = useState(0.1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
 
-  // Initialize audio once
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
+      audioRef.current.crossOrigin = "anonymous";
     }
     const audio = audioRef.current;
     
     const updateProgress = () => setCurrentTime(audio.currentTime);
     const updateDuration = () => setDuration(audio.duration);
-    const handlePlay = () => setIsPlaying(true);
+    const handlePlay = () => {
+      setIsPlaying(true);
+      if (audioContextRef.current?.state === 'suspended') {
+        audioContextRef.current.resume();
+      }
+    };
     const handlePause = () => setIsPlaying(false);
     const handleEnded = () => {
       setTrackIndex((prev) => (prev + 1) % tracks.length);
@@ -105,7 +115,39 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, []);
 
-  // Sync source and volume
+  useEffect(() => {
+    const handleInteraction = () => {
+      const audio = audioRef.current;
+      if (!audio || audioContextRef.current) return;
+
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      
+      const source = ctx.createMediaElementSource(audio);
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+      
+      audioContextRef.current = ctx;
+      analyserRef.current = analyser;
+      sourceRef.current = source;
+      
+      // Trigger a re-render to propagate the analyserRef.current
+      setTrackIndex(i => i);
+
+      document.removeEventListener('mousedown', handleInteraction);
+      document.removeEventListener('keydown', handleInteraction);
+    };
+
+    document.addEventListener('mousedown', handleInteraction);
+    document.addEventListener('keydown', handleInteraction);
+    return () => {
+      document.removeEventListener('mousedown', handleInteraction);
+      document.removeEventListener('keydown', handleInteraction);
+    };
+  }, []);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -114,12 +156,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (audio.src !== window.location.origin + currentUrl && !audio.src.endsWith(currentUrl)) {
       audio.src = currentUrl;
       audio.load();
-      // If it was already playing, continue playing the new track
       if (isPlaying) {
         audio.play().catch(() => setIsPlaying(false));
       }
     }
-  }, [trackIndex]);
+  }, [trackIndex, isPlaying]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -142,26 +183,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const nextTrack = useCallback(() => {
-    setTrackIndex((prev) => {
-      const next = (prev + 1) % tracks.length;
-      if (next === prev && audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => {});
-      }
-      return next;
-    });
+    setTrackIndex((prev) => (prev + 1) % tracks.length);
     setIsPlaying(true);
   }, []);
 
   const prevTrack = useCallback(() => {
-    setTrackIndex((prev) => {
-      const next = (prev - 1 + tracks.length) % tracks.length;
-      if (next === prev && audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => {});
-      }
-      return next;
-    });
+    setTrackIndex((prev) => (prev - 1 + tracks.length) % tracks.length);
     setIsPlaying(true);
   }, []);
 
@@ -176,29 +203,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setVolume(v);
   }, []);
 
-  // Autoplay on first interaction
-  useEffect(() => {
-    const handleFirstInteraction = () => {
-      if (audioRef.current && audioRef.current.paused) {
-        audioRef.current.play().catch(() => {
-          // Keep trying on next interaction if it fails? 
-          // No, usually one is enough or it will never work.
-        });
-      }
-    };
-    
-    document.addEventListener('click', handleFirstInteraction, { once: true });
-    document.addEventListener('keydown', handleFirstInteraction, { once: true });
-    
-    return () => {
-      document.removeEventListener('click', handleFirstInteraction);
-      document.removeEventListener('keydown', handleFirstInteraction);
-    };
-  }, []);
-
   return (
     <MusicContext.Provider value={{ 
-      isPlaying, currentTrack: tracks[trackIndex], volume, currentTime, duration,
+      isPlaying, currentTrack: tracks[trackIndex], volume, currentTime, duration, analyser: analyserRef.current,
       togglePlay, nextTrack, prevTrack, setVolume: updateVolume, seek 
     }}>
       {children}

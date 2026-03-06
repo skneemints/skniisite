@@ -7,6 +7,15 @@
   font-style: normal;
 }
 
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 :root {
   --color-win-bg: #1a1a1a;
   --color-win-dark: #0f0f0f;

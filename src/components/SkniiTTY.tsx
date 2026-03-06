@@ -6,7 +6,7 @@ interface LogEntry {
   text: string;
 }
 
-export const SkniiTTY: React.FC = () => {
+export const SkniiTTY: React.FC<{ onCrash?: () => void }> = ({ onCrash }) => {
   const { theme } = useTheme();
   
   // Load history from localStorage or use initial greeting
@@ -70,6 +70,9 @@ export const SkniiTTY: React.FC = () => {
       case 'theme':
         newHistory.push({ type: 'output', text: `Current Primary: ${theme.primary}` });
         break;
+      case 'crash':
+        onCrash?.();
+        return;
       case '':
         break;
       default:

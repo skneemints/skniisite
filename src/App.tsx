@@ -7,6 +7,8 @@ import { ThemeWindow, SettingsWindow } from './components/ThemeSettings';
 import { Starfield } from './components/Starfield';
 import { WelcomeWindow } from './components/WelcomeWindow';
 import { SkniiTTY } from './components/SkniiTTY';
+import { MouseTrail } from './components/MouseTrail';
+import { BSOD } from './components/BSOD';
 import { Palette, Settings, Cpu, Monitor } from 'lucide-react';
 
 const Desktop = () => {
@@ -15,6 +17,19 @@ const Desktop = () => {
   const [minimizedWindows, setMinimizedWindows] = useState<string[]>([]);
   const [maximizedWindows, setMaximizedWindows] = useState<string[]>([]);
   const [windowStack, setWindowStack] = useState<string[]>(['welcome']);
+  const [showBSOD, setShowBSOD] = useState(false);
+
+  const triggerBSOD = () => {
+    setShowBSOD(true);
+  };
+
+  const restartSystem = () => {
+    setShowBSOD(false);
+    setOpenWindows(['welcome']);
+    setMinimizedWindows([]);
+    setMaximizedWindows([]);
+    setWindowStack(['welcome']);
+  };
 
   const focusWindow = (id: string) => {
     setWindowStack(prev => {
@@ -64,6 +79,9 @@ const Desktop = () => {
   return (
     <div className={`h-screen w-screen flex flex-col relative overflow-hidden select-none`}>
       <Starfield />
+      <MouseTrail />
+      
+      {showBSOD && <BSOD onRestart={restartSystem} />}
       
       {/* CRT Effects */}
       {theme.crtEnabled && (
@@ -78,6 +96,7 @@ const Desktop = () => {
         onOpenWindow={toggleWindow} 
         openWindows={openWindows}
         minimizedWindows={minimizedWindows}
+        onShutdown={triggerBSOD}
       />
 
       <main className="flex-1 relative p-6 z-10">
@@ -118,6 +137,7 @@ const Desktop = () => {
                 onMaximize={() => maximizeWindow('welcome')}
                 onFocus={() => focusWindow('welcome')}
                 zIndex={getZIndex('welcome')}
+                isActive={windowStack[windowStack.length - 1] === 'welcome'}
                 isMinimized={minimizedWindows.includes('welcome')}
                 isMaximized={maximizedWindows.includes('welcome')}
                 defaultPosition={{ x: 0, y: 0 }}
@@ -137,6 +157,7 @@ const Desktop = () => {
                 onMaximize={() => maximizeWindow('theme')}
                 onFocus={() => focusWindow('theme')}
                 zIndex={getZIndex('theme')}
+                isActive={windowStack[windowStack.length - 1] === 'theme'}
                 isMinimized={minimizedWindows.includes('theme')}
                 isMaximized={maximizedWindows.includes('theme')}
                 defaultPosition={{ x: 0, y: 0 }}
@@ -156,6 +177,7 @@ const Desktop = () => {
                 onMaximize={() => maximizeWindow('settings')}
                 onFocus={() => focusWindow('settings')}
                 zIndex={getZIndex('settings')}
+                isActive={windowStack[windowStack.length - 1] === 'settings'}
                 isMinimized={minimizedWindows.includes('settings')}
                 isMaximized={maximizedWindows.includes('settings')}
                 defaultPosition={{ x: 0, y: 0 }}
@@ -175,6 +197,7 @@ const Desktop = () => {
                 onMaximize={() => maximizeWindow('hardware')}
                 onFocus={() => focusWindow('hardware')}
                 zIndex={getZIndex('hardware')}
+                isActive={windowStack[windowStack.length - 1] === 'hardware'}
                 isMinimized={minimizedWindows.includes('hardware')}
                 isMaximized={maximizedWindows.includes('hardware')}
                 defaultPosition={{ x: 0, y: 0 }}
@@ -198,13 +221,14 @@ const Desktop = () => {
                 onMaximize={() => maximizeWindow('terminal')}
                 onFocus={() => focusWindow('terminal')}
                 zIndex={getZIndex('terminal')}
+                isActive={windowStack[windowStack.length - 1] === 'terminal'}
                 isMinimized={minimizedWindows.includes('terminal')}
                 isMaximized={maximizedWindows.includes('terminal')}
                 defaultPosition={{ x: 0, y: 0 }}
                 className="max-w-4xl w-[900px]"
                 flush
               >
-                <SkniiTTY />
+                <SkniiTTY onCrash={triggerBSOD} />
               </Window>
             </div>
           )}

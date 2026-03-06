@@ -9,9 +9,10 @@ interface TaskbarProps {
   onOpenWindow: (type: string) => void;
   openWindows: string[];
   minimizedWindows: string[];
+  onShutdown: () => void;
 }
 
-export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, minimizedWindows }) => {
+export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, minimizedWindows, onShutdown }) => {
   const [showStart, setShowStart] = useState(false);
   const [showMusic, setShowMusic] = useState(false);
   const { theme } = useTheme();
@@ -112,7 +113,10 @@ export const Taskbar: React.FC<TaskbarProps> = ({ onOpenWindow, openWindows, min
                   <Settings className="w-4 h-4" /> SETTINGS
                 </button>
                 <div className="border-t border-gray-700 my-1" />
-                <button className="w-full text-left px-4 py-2 hover:bg-red-900 font-bold text-xs text-red-500">
+                <button 
+                  onClick={() => { onShutdown(); setShowStart(false); }}
+                  className="w-full text-left px-4 py-2 hover:bg-red-900 font-bold text-xs text-red-500"
+                >
                   SHUTDOWN
                 </button>
               </div>
